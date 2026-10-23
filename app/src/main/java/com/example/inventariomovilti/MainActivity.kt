@@ -1,6 +1,6 @@
 
 package com.example.inventariomovilti
-
+import androidx.compose.animation.animateContentSize
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,7 +19,12 @@ import com.example.inventariomovilti.data.repository.InventarioRepository
 import com.example.inventariomovilti.ui.components.FormularioMovimiento
 import com.example.inventariomovilti.ui.components.FormularioProducto
 import com.example.inventariomovilti.viewmodel.InventarioViewModel
-
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 data class Producto(
     val id: Int,
     val nombre: String,
@@ -198,12 +203,32 @@ fun PantallaInventario(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        if (productos.isEmpty()) {
-            Text(
-                "No hay productos registrados. " +
-                        "Presiona Agregar producto para comenzar."
-            )
+
+        AnimatedVisibility(
+            visible = mostrarHistorial,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Column {
+                Text(
+                    "Últimos movimientos",
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                if (movimientos.isEmpty()) {
+                    Text("Sin movimientos registrados")
+                }
+
+                movimientos.take(3).forEach { movimiento ->
+                    Text(
+                        "${movimiento.tipo}: " +
+                                "${movimiento.nombreProducto} " +
+                                "(${movimiento.cantidad} unidades)"
+                    )
+                }
+            }
         }
+
 
         LazyColumn(
             modifier = Modifier.weight(1f),
@@ -212,7 +237,9 @@ fun PantallaInventario(
             items(productos, key = { it.id }) { producto ->
 
                 Card(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .animateContentSize()
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp)
