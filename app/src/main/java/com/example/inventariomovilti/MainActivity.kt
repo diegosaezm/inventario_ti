@@ -12,7 +12,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.inventariomovilti.ui.components.FormularioProducto
-
+import com.example.inventariomovilti.model.Movimiento
+import com.example.inventariomovilti.ui.components.FormularioMovimiento
 data class Producto(
     val id: Int,
     val nombre: String,
@@ -52,6 +53,20 @@ fun PantallaInventario() {
         mutableStateOf(false)
     }
 
+
+    var productoSeleccionado by remember {
+        mutableStateOf<Producto?>(null)
+    }
+
+    var movimientos by remember {
+        mutableStateOf<List<Movimiento>>(emptyList())
+    }
+
+    var mostrarHistorial by remember {
+        mutableStateOf(false)
+    }
+
+
     if (mostrarFormulario) {
         AlertDialog(
             onDismissRequest = {
@@ -81,6 +96,63 @@ fun PantallaInventario() {
         )
     }
 
+
+    productoSeleccionado?.let { producto ->
+
+        AlertDialog(
+            onDismissRequest = {
+                productoSeleccionado = null
+            },
+            title = {
+                Text("Registrar movimiento")
+            },
+            text = {
+                FormularioMovimiento(
+                    producto = producto,
+                    onGuardar = { tipo, cantidad ->
+
+                        val productoActual = productos.find {
+                            it.id == producto.id
+                        }
+
+                        if (productoActual != null) {
+                            val nuevoStock = if (tipo == "Entrada") {
+                                productoActual.stock + cantidad
+                            } else {
+                                productoActual.stock - cantidad
+                            }
+
+                            if (nuevoStock >= 0) {
+                                productos = productos.map {
+                                    if (it.id == producto.id) {
+                                        it.copy(stock = nuevoStock)
+                                    } else {
+                                        it
+                                    }
+                                }
+
+                                movimientos = movimientos + Movimiento(
+                                    id = movimientos.size + 1,
+                                    productoId = producto.id,
+                                    nombreProducto = producto.nombre,
+                                    tipo = tipo,
+                                    cantidad = cantidad
+                                )
+                            }
+                        }
+
+                        productoSeleccionado = null
+                    },
+                    onCancelar = {
+                        productoSeleccionado = null
+                    }
+                )
+            },
+            confirmButton = {}
+        )
+    }
+
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -102,6 +174,39 @@ fun PantallaInventario() {
         ) {
             Text("+ Agregar producto")
         }
+
+        OutlinedButton(
+            onClick = {
+                mostrarHistorial = !mostrarHistorial
+            }
+        ) {
+            Text(
+                if (mostrarHistorial) "Ocultar historial"
+                else "Ver historial"
+            )
+        }
+
+
+        if (mostrarHistorial) {
+            Text(
+                "Historial de movimientos",
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            if (movimientos.isEmpty()) {
+                Text("Todavía no hay movimientos")
+            }
+
+            movimientos.takeLast(5).reversed().forEach { movimiento ->
+                Text(
+                    "${movimiento.tipo}: " +
+                            "${movimiento.nombreProducto} " +
+                            "(${movimiento.cantidad} unidades)"
+                )
+            }
+        }
+
+
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -138,18 +243,11 @@ fun PantallaInventario() {
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Button(
-                            enabled = producto.stock > 0,
                             onClick = {
-                                productos = productos.map {
-                                    if (it.id == producto.id) {
-                                        it.copy(stock = it.stock - 1)
-                                    } else {
-                                        it
-                                    }
-                                }
+                                productoSeleccionado = producto
                             }
                         ) {
-                            Text("Registrar salida (-1)")
+                            Text("Registrar movimiento")
                         }
                     }
                 }
