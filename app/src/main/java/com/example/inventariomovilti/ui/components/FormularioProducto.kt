@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 
+import com.example.inventariomovilti.validacion.Validaciones
 import com.example.inventariomovilti.Producto
 import com.example.inventariomovilti.model.CategoriaProducto
 
@@ -26,24 +27,12 @@ fun FormularioProducto(
     var stockMinimo by remember { mutableStateOf("") }
     var mostrarErrores by remember { mutableStateOf(false) }
 
-    // Controla si el menú está abierto
     var menuExpandido by remember { mutableStateOf(false) }
 
-    val stockNumero = stock.toIntOrNull()
-    val minimoNumero = stockMinimo.toIntOrNull()
-
-    val nombreValido = nombre.isNotBlank()
-
-    // Solo aceptamos categorías definidas en el enum
-    val categoriaValida = CategoriaProducto.entries.any {
-        it.nombre == categoria
-    }
-
-    val stockValido =
-        stockNumero != null && stockNumero >= 0
-
-    val minimoValido =
-        minimoNumero != null && minimoNumero >= 0
+    val errorNombre = Validaciones.validarNombre(nombre)
+    val errorCategoria = Validaciones.validarCategoria(categoria)
+    val errorStock = Validaciones.validarStock(stock)
+    val errorMinimo = Validaciones.validarStock(stockMinimo)
 
     Column(
         modifier = Modifier
@@ -52,21 +41,19 @@ fun FormularioProducto(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
 
-        // NOMBRE
         OutlinedTextField(
             value = nombre,
             onValueChange = { nombre = it },
             label = { Text("Nombre") },
-            isError = mostrarErrores && !nombreValido,
+            isError = mostrarErrores && errorNombre.isNotEmpty(),
             supportingText = {
-                if (mostrarErrores && !nombreValido) {
-                    Text("Ingresa un nombre")
+                if (mostrarErrores && errorNombre.isNotEmpty()) {
+                    Text(errorNombre)
                 }
             },
             modifier = Modifier.fillMaxWidth()
         )
 
-        // CATEGORÍA MEDIANTE ENUM
         ExposedDropdownMenuBox(
             expanded = menuExpandido,
             onExpandedChange = {
@@ -78,10 +65,10 @@ fun FormularioProducto(
                 onValueChange = {},
                 readOnly = true,
                 label = { Text("Categoría") },
-                isError = mostrarErrores && !categoriaValida,
+                isError = mostrarErrores && errorCategoria.isNotEmpty(),
                 supportingText = {
-                    if (mostrarErrores && !categoriaValida) {
-                        Text("Selecciona una categoría")
+                    if (mostrarErrores && errorCategoria.isNotEmpty()) {
+                        Text(errorCategoria)
                     }
                 },
                 trailingIcon = {
@@ -114,7 +101,6 @@ fun FormularioProducto(
             }
         }
 
-        // STOCK INICIAL
         OutlinedTextField(
             value = stock,
             onValueChange = { stock = it },
@@ -122,16 +108,15 @@ fun FormularioProducto(
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Number
             ),
-            isError = mostrarErrores && !stockValido,
+            isError = mostrarErrores && errorStock.isNotEmpty(),
             supportingText = {
-                if (mostrarErrores && !stockValido) {
-                    Text("Ingresa un entero válido (0 o mayor)")
+                if (mostrarErrores && errorStock.isNotEmpty()) {
+                    Text(errorStock)
                 }
             },
             modifier = Modifier.fillMaxWidth()
         )
 
-        // STOCK MÍNIMO
         OutlinedTextField(
             value = stockMinimo,
             onValueChange = { stockMinimo = it },
@@ -139,16 +124,15 @@ fun FormularioProducto(
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Number
             ),
-            isError = mostrarErrores && !minimoValido,
+            isError = mostrarErrores && errorMinimo.isNotEmpty(),
             supportingText = {
-                if (mostrarErrores && !minimoValido) {
-                    Text("Ingresa un entero válido (0 o mayor)")
+                if (mostrarErrores && errorMinimo.isNotEmpty()) {
+                    Text(errorMinimo)
                 }
             },
             modifier = Modifier.fillMaxWidth()
         )
 
-        // BOTONES
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -161,18 +145,18 @@ fun FormularioProducto(
                     mostrarErrores = true
 
                     if (
-                        nombreValido &&
-                        categoriaValida &&
-                        stockValido &&
-                        minimoValido
+                        errorNombre.isEmpty() &&
+                        errorCategoria.isEmpty() &&
+                        errorStock.isEmpty() &&
+                        errorMinimo.isEmpty()
                     ) {
                         onGuardar(
                             Producto(
                                 id = 0,
                                 nombre = nombre.trim(),
                                 categoria = categoria,
-                                stock = requireNotNull(stockNumero),
-                                stockMinimo = requireNotNull(minimoNumero)
+                                stock = stock.toInt(),
+                                stockMinimo = stockMinimo.toInt()
                             )
                         )
                     }

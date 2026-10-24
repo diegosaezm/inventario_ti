@@ -8,6 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.example.inventariomovilti.validacion.Validaciones
 import com.example.inventariomovilti.Producto
 
 @Composable
@@ -20,12 +21,7 @@ fun FormularioMovimiento(
     var cantidad by remember { mutableStateOf("") }
     var mostrarError by remember { mutableStateOf(false) }
 
-    val cantidadNumero = cantidad.toIntOrNull()
-
-    val cantidadValida =
-        cantidadNumero != null &&
-                cantidadNumero > 0 &&
-                (tipo == "Entrada" || cantidadNumero <= producto.stock)
+    val errorCantidad = Validaciones.validarCantidad(tipo, cantidad, producto.stock)
 
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -63,19 +59,10 @@ fun FormularioMovimiento(
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Number
             ),
-            isError = mostrarError && !cantidadValida,
+            isError = mostrarError && errorCantidad.isNotEmpty(),
             supportingText = {
-                if (mostrarError && !cantidadValida) {
-                    Text(
-                        if (tipo == "Salida" &&
-                            cantidadNumero != null &&
-                            cantidadNumero > producto.stock
-                        ) {
-                            "No puedes retirar más unidades que las disponibles"
-                        } else {
-                            "Ingresa una cantidad válida mayor que cero"
-                        }
-                    )
+                if (mostrarError && errorCantidad.isNotEmpty()) {
+                    Text(errorCantidad)
                 }
             },
             modifier = Modifier.fillMaxWidth()
@@ -92,8 +79,8 @@ fun FormularioMovimiento(
                 onClick = {
                     mostrarError = true
 
-                    if (cantidadValida) {
-                        onGuardar(tipo, requireNotNull(cantidadNumero))
+                    if (errorCantidad.isEmpty()) {
+                        onGuardar(tipo, cantidad.toInt())
                     }
                 }
             ) {

@@ -3,6 +3,7 @@ package com.example.inventariomovilti.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.inventariomovilti.validacion.Validaciones
 import com.example.inventariomovilti.Producto
 import com.example.inventariomovilti.data.repository.InventarioRepository
 import kotlinx.coroutines.flow.SharingStarted
@@ -26,10 +27,10 @@ class InventarioViewModel(
     )
 
     fun agregarProducto(producto: Producto) {
-        if (producto.nombre.isBlank() ||
-            producto.categoria.isBlank() ||
-            producto.stock < 0 ||
-            producto.stockMinimo < 0
+        if (Validaciones.validarNombre(producto.nombre).isNotEmpty() ||
+            Validaciones.validarCategoria(producto.categoria).isNotEmpty() ||
+            Validaciones.validarStock(producto.stock.toString()).isNotEmpty() ||
+            Validaciones.validarStock(producto.stockMinimo.toString()).isNotEmpty()
         ) return
 
         viewModelScope.launch {
