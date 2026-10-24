@@ -9,15 +9,12 @@ import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
 
+import androidx.activity.compose.BackHandler
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,6 +22,12 @@ import androidx.compose.foundation.lazy.items
 
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.res.painterResource
+import com.example.inventariomovilti.model.Movimiento
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -40,7 +43,6 @@ import com.example.inventariomovilti.ui.components.FormularioProducto
 import com.example.inventariomovilti.viewmodel.InventarioViewModel
 
 
-// MODELO UTILIZADO POR LA INTERFAZ
 data class Producto(
     val id: Int,
     val nombre: String,
@@ -50,7 +52,6 @@ data class Producto(
 )
 
 
-// ACTIVIDAD PRINCIPAL
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -97,7 +98,6 @@ class MainActivity : ComponentActivity() {
 }
 
 
-// PANTALLA PRINCIPAL
 @Composable
 fun PantallaInventario(
     viewModel: InventarioViewModel
@@ -105,11 +105,9 @@ fun PantallaInventario(
 
     val context = LocalContext.current
 
-    // Datos observados desde Room
     val productos by viewModel.productos.collectAsState()
     val movimientos by viewModel.movimientos.collectAsState()
 
-    // Estados visuales
     var mostrarFormulario by remember {
         mutableStateOf(false)
     }
@@ -118,12 +116,13 @@ fun PantallaInventario(
         mutableStateOf<Producto?>(null)
     }
 
-    var mostrarHistorial by remember {
-        mutableStateOf(false)
+    var pantalla by rememberSaveable { mutableStateOf("Productos") }
+
+    BackHandler(enabled = pantalla == "Historial" && !mostrarFormulario && productoSeleccionado == null) {
+        pantalla = "Productos"
     }
 
 
-    // FORMULARIO PARA AGREGAR PRODUCTOS
     if (mostrarFormulario) {
 
         AlertDialog(
@@ -155,7 +154,6 @@ fun PantallaInventario(
     }
 
 
-    // FORMULARIO DE MOVIMIENTOS
     productoSeleccionado?.let { producto ->
 
         AlertDialog(
@@ -179,7 +177,6 @@ fun PantallaInventario(
                             cantidad = cantidad
                         )
 
-                        // Retroalimentación nativa
                         vibrar(context)
 
                         productoSeleccionado = null
@@ -196,176 +193,92 @@ fun PantallaInventario(
     }
 
 
-    // CONTENIDO PRINCIPAL
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .safeDrawingPadding()
-            .padding(16.dp)
-    ) {
-
-        Text(
-            text = "Inventario Móvil TI",
-            style = MaterialTheme.typography.headlineMedium
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-
-        // AGREGAR PRODUCTOS
-        Button(
-            onClick = {
-                mostrarFormulario = true
-            }
-        ) {
-            Text("+ Agregar producto")
-        }
-
-
-        // MOSTRAR U OCULTAR HISTORIAL
-        OutlinedButton(
-            onClick = {
-                mostrarHistorial = !mostrarHistorial
-            }
-        ) {
-            Text(
-                if (mostrarHistorial)
-                    "Ocultar historial"
-                else
-                    "Ver historial"
-            )
-        }
-
-
-        // HISTORIAL ANIMADO
-        AnimatedVisibility(
-            visible = mostrarHistorial,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically()
-        ) {
-
-            Column(
-                verticalArrangement =
-                    Arrangement.spacedBy(6.dp)
-            ) {
-
-                Text(
-                    text = "Últimos movimientos",
-                    style = MaterialTheme.typography.titleMedium
+    Scaffold(
+        bottomBar = {
+            NavigationBar {
+                NavigationBarItem(
+                    selected = pantalla == "Productos",
+                    onClick = { pantalla = "Productos" },
+                    icon = {
+                        Icon(painterResource(R.drawable.ic_productos), contentDescription = null)
+                    },
+                    label = { Text("Productos") }
                 )
-
-                if (movimientos.isEmpty()) {
-                    Text("Sin movimientos registrados")
-                }
-
-                movimientos.take(3).forEach { movimiento ->
-
-                    Text(
-                        "${movimiento.tipo}: " +
-                                "${movimiento.nombreProducto} " +
-                                "(${movimiento.cantidad} unidades)"
-                    )
-                }
+                NavigationBarItem(
+                    selected = pantalla == "Historial",
+                    onClick = { pantalla = "Historial" },
+                    icon = {
+                        Icon(painterResource(R.drawable.ic_historial), contentDescription = null)
+                    },
+                    label = { Text("Historial") }
+                )
             }
         }
+    ) { espacio ->
+        AnimatedContent(
+            targetState = pantalla,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(espacio)
+                .padding(16.dp),
+            label = "Cambio de pantalla"
+        ) { seleccion ->
+            if (seleccion == "Productos") {
+                PantallaProductos(
+                    productos = productos,
+                    onAgregar = { mostrarFormulario = true },
+                    onMovimiento = { productoSeleccionado = it },
+                    onCopiar = { copiarProducto(context, it) }
+                )
+            } else {
+                PantallaHistorial(movimientos)
+            }
+        }
+    }
+}
 
-
+@Composable
+fun PantallaProductos(
+    productos: List<Producto>,
+    onAgregar: () -> Unit,
+    onMovimiento: (Producto) -> Unit,
+    onCopiar: (Producto) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        Text("Inventario Móvil TI", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(12.dp))
-
+        Button(onClick = onAgregar) {
+            Text("Agregar producto")
+        }
+        Spacer(modifier = Modifier.height(12.dp))
         Text(
-            text = "Productos registrados: ${productos.size}",
+            "Productos registrados: ${productos.size}",
             style = MaterialTheme.typography.titleMedium
         )
-
         Spacer(modifier = Modifier.height(8.dp))
-
-
-        // MENSAJE CUANDO NO HAY PRODUCTOS
         if (productos.isEmpty()) {
-
-            Text(
-                "No hay productos registrados. " +
-                        "Presiona Agregar producto para comenzar."
-            )
+            Text("No hay productos registrados. Presiona Agregar producto para comenzar.")
         }
-
-
-        // CATALOGO DE PRODUCTOS
         LazyColumn(
             modifier = Modifier.weight(1f),
-            verticalArrangement =
-                Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-
-            items(
-                items = productos,
-                key = { it.id }
-            ) { producto ->
-
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .animateContentSize()
-                ) {
-
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-
-                        Text(
-                            text = producto.nombre,
-                            style =
-                                MaterialTheme.typography.titleMedium
-                        )
-
-                        Text(
-                            "Categoría: ${producto.categoria}"
-                        )
-
-                        Text(
-                            "Stock: ${producto.stock}"
-                        )
-
-                        Text(
-                            "Mínimo: ${producto.stockMinimo}"
-                        )
-
-
-                        // ALERTA DE STOCK BAJO
-                        if (
-                            producto.stock <= producto.stockMinimo
-                        ) {
-                            Text(
-                                text = "⚠ Stock bajo",
-                                color = MaterialTheme.colorScheme.error
-                            )
+            items(productos, key = { it.id }) { producto ->
+                Card(modifier = Modifier.fillMaxWidth().animateContentSize()) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(producto.nombre, style = MaterialTheme.typography.titleMedium)
+                        Text("Categoría: ${producto.categoria}")
+                        Text("Stock: ${producto.stock}")
+                        Text("Mínimo: ${producto.stockMinimo}")
+                        if (producto.stock <= producto.stockMinimo) {
+                            Text("Stock bajo", color = MaterialTheme.colorScheme.error)
                         }
-
-                        Spacer(
-                            modifier = Modifier.height(8.dp)
-                        )
-
-
-                        // REGISTRAR MOVIMIENTO
-                        Button(
-                            onClick = {
-                                productoSeleccionado = producto
-                            }
-                        ) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(onClick = { onMovimiento(producto) }) {
                             Text("Registrar movimiento")
                         }
-
-                        Spacer(
-                            modifier = Modifier.height(8.dp)
-                        )
-
-
-                        // RECURSO NATIVO: PORTAPAPELES
-                        OutlinedButton(
-                            onClick = {
-                                copiarProducto(context, producto)
-                            }
-                        ) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(onClick = { onCopiar(producto) }) {
                             Text("Copiar información")
                         }
                     }
@@ -375,8 +288,33 @@ fun PantallaInventario(
     }
 }
 
+@Composable
+fun PantallaHistorial(movimientos: List<Movimiento>) {
+    val formatoFecha = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
 
-// RECURSO NATIVO: PORTAPAPELES
+    Column(modifier = Modifier.fillMaxSize()) {
+        Text("Historial", style = MaterialTheme.typography.headlineMedium)
+        Spacer(modifier = Modifier.height(12.dp))
+        if (movimientos.isEmpty()) {
+            Text("Sin movimientos registrados")
+        }
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(movimientos, key = { it.id }) { movimiento ->
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(movimiento.nombreProducto, style = MaterialTheme.typography.titleMedium)
+                        Text("${movimiento.tipo}: ${movimiento.cantidad} unidades")
+                        Text(formatoFecha.format(Date(movimiento.fecha)))
+                    }
+                }
+            }
+        }
+    }
+}
+
 fun copiarProducto(
     context: Context,
     producto: Producto
@@ -402,7 +340,6 @@ fun copiarProducto(
 }
 
 
-// RECURSO NATIVO: VIBRACION
 fun vibrar(context: Context) {
 
     val vibrator = context.getSystemService(

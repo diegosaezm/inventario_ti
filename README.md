@@ -16,18 +16,19 @@ Aplicación Android para llevar un inventario de productos tecnológicos con dat
 - Registrar productos con nombre, categoría, stock inicial y stock mínimo.
 - Validar los campos de los formularios.
 - Registrar entradas y salidas sin permitir stock negativo.
-- Consultar los últimos movimientos.
+- Cambiar entre Productos e Historial desde la barra inferior.
+- Consultar todos los movimientos con su fecha y hora.
 - Mostrar un aviso cuando el stock está en el mínimo o por debajo.
 - Guardar productos y movimientos en el dispositivo con Room.
 - Copiar la información de un producto al portapapeles.
 - Usar vibración al enviar un movimiento a guardar.
-- Mostrar animaciones en el historial y las tarjetas.
+- Mostrar animaciones al cambiar de pantalla y en las tarjetas.
 
 ## Herramientas
 
 Kotlin, Jetpack Compose, Material 3, ViewModel, Room y Gradle.
 
-Las pantallas están en `ui`, la gestión del estado en `viewmodel` y el almacenamiento en `data`.
+Las pantallas están en `ui`, las validaciones en `validacion`, la gestión del estado en `viewmodel` y el almacenamiento en `data`.
 
 ## Cómo ejecutar
 
